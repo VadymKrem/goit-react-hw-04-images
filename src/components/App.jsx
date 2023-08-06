@@ -69,12 +69,6 @@ console.log(this.state.galleryPage)
       if (nextPage === 1) {
         toast.success(`Hooray! We found ${apiService.hits} images.`);
       }
-
-      this.setState({
-        loading: false,
-        isButtonShow: true,
-        error: false,
-      });
     });
   };
 
