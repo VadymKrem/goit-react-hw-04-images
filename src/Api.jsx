@@ -23,34 +23,13 @@ export default class ApiService {
 
     try {
       const response = await axios.get(`${BASE_URL}?${OPTIONS.toString()}`);
-      this.incrementPage();
       return response.data;
     } catch (error) {
       console.error(error.toJSON());
     }
   }
 
-  get query() {
-    return this.searchQuery;
-  }
-
   set query(newQuery) {
     this.searchQuery = newQuery;
-  }
-
-  get hits() {
-    return this.totalHits;
-  }
-
-  set hits(newTotalHits) {
-    this.totalHits = newTotalHits;
-  }
-
-  incrementPage() {
-    this.page += 1;
-  }
-
-  resetPage() {
-    this.page = 1;
   }
 }

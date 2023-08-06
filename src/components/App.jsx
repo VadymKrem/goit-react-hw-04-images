@@ -31,12 +31,7 @@ export class App extends Component {
     const prevPage = prevState.galleryPage;
     const nextPage = this.state.galleryPage;
 
-    if (prevQuery !== nextQuery) {
-      this.setState({ galleryPage: 1, galleryItems: [], isButtonShow: false });
-      if (nextPage === 1) {
-        this.fetchGalleryItems(nextQuery, nextPage);
-      }
-    } else if (prevPage !== nextPage) {
+    if (prevQuery !== nextQuery || prevPage !== nextPage) {
       this.fetchGalleryItems(nextQuery, nextPage);
     }
   }
@@ -48,7 +43,13 @@ export class App extends Component {
     apiService.page = nextPage;
 
     apiService.fetchPost().then(data => {
-      apiService.hits = data.totalHits;
+
+      if (!data.totalHits) {
+        this.setState({ loading: false, error: true });
+        return toast.warn(
+          'Sorry, there are no images matching your search query. Please try again.'
+        );
+      }
 
       const newData = data.hits.map(
         ({ id, tags, webformatURL, largeImageURL }) => ({
@@ -58,27 +59,11 @@ export class App extends Component {
           largeImageURL,
         })
       );
-      const currentData = [...this.state.galleryItems, ...newData];
 
-      this.setState(prevState => ({
-        galleryItems: [...prevState.galleryItems, ...newData],
-      }));
-
-      if (!data.totalHits) {
-        this.setState({ loading: false, error: true });
-        return toast.warn(
-          'Sorry, there are no images matching your search query. Please try again.'
-        );
-      }
-
-      if (currentData.length >= data.totalHits) {
-        this.setState({
-          loading: false,
-          isButtonShow: false,
-          error: false,
-        });
-        return;
-      }
+        this.setState(prevState => ({
+          galleryItems: [...prevState.galleryItems, ...newData],
+          isButtonShow: this.state.page < Math.ceil(data.totalHits / 12),
+        }));
 
       if (nextPage === 1) {
         toast.success(`Hooray! We found ${apiService.hits} images.`);
@@ -93,7 +78,7 @@ export class App extends Component {
   };
 
   handleFormSubmit = searchQuery => {
-    this.setState({ searchQuery });
+    this.setState({ searchQuery, galleryPage: 1, galleryItems: [], isButtonShow: false });
   };
 
   onLoadMore = () => {
