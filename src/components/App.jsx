@@ -33,6 +33,7 @@ export class App extends Component {
 
     if (prevQuery !== nextQuery || prevPage !== nextPage) {
       this.fetchGalleryItems(nextQuery, nextPage);
+
     }
   }
 
@@ -59,12 +60,12 @@ export class App extends Component {
           largeImageURL,
         })
       );
-
+console.log(this.state.galleryPage)      
+      console.log(data.totalHits)
         this.setState(prevState => ({
           galleryItems: [...prevState.galleryItems, ...newData],
-          isButtonShow: this.state.page < Math.ceil(data.totalHits / 12),
+          isButtonShow: this.state.galleryPage < Math.ceil(data.totalHits / 12),
         }));
-
       if (nextPage === 1) {
         toast.success(`Hooray! We found ${apiService.hits} images.`);
       }
