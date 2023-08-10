@@ -1,102 +1,98 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-import ApiService from '../Api';
+import PostsApiService from '../Api';
 
-import Searchbar from './Searchbar/Searchbar';
+import { Searchbar } from './Searchbar/Searchbar';
 import { ImageGallery } from './ImageGallery/ImageGallery';
 import { Button } from 'components/Button/Button';
 import { Loader } from 'components/Loader/Loader';
 
 import { Container } from './App.styled';
 
-const apiService = new ApiService();
+const postApiService = new PostsApiService();
 
-export class App extends Component {
-  state = {
-    searchQuery: ``,
-    galleryItems: [],
-    galleryPage: 1,
+export const App = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [galleryItems, setGalleryItems] = useState([]);
+  const [galleryPage, setGalleryPage] = useState(1);
+  const [isButtonShow, setIsButtonShow] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(false);
 
-    isLoading: false,
-    isButtonShow: false,
-    error: true,
-  };
+  useEffect(() => {
+    if (!searchQuery) return;
 
-  componentDidUpdate(_, prevState) {
-    const prevQuery = prevState.searchQuery;
-    const nextQuery = this.state.searchQuery;
-    const prevPage = prevState.galleryPage;
-    const nextPage = this.state.galleryPage;
+    const fetchGalleryItems = (query, page) => {
+      setIsLoading(true);
 
-    if (prevQuery !== nextQuery || prevPage !== nextPage) {
-      this.fetchGalleryItems(nextQuery, nextPage);
+      postApiService.query = query;
+      postApiService.page = page;
 
-    }
-  }
+      postApiService
+        .fetchPost()
+        .then(data => {
+          const newData = data.hits.map(
+            ({ id, tags, webformatURL, largeImageURL }) => ({
+              id,
+              tags,
+              webformatURL,
+              largeImageURL,
+            })
+          );
 
-  fetchGalleryItems = (nextQuery, nextPage) => {
-    this.setState({ loading: true, error: false });
+          setGalleryItems(prevGalleryItems => [
+            ...prevGalleryItems,
+            ...newData,
+          ]);
 
-    apiService.query = nextQuery;
-    apiService.page = nextPage;
+          if (!data.totalHits) {
+            return toast.warn(
+              'Sorry, there are no images matching your search query. Please try again.'
+            );
+          }
 
-    apiService.fetchPost().then(data => {
-
-      if (!data.totalHits) {
-        this.setState({ loading: false, error: true });
-        return toast.warn(
-          'Sorry, there are no images matching your search query. Please try again.'
-        );
-      }
-
-      const newData = data.hits.map(
-        ({ id, tags, webformatURL, largeImageURL }) => ({
-          id,
-          tags,
-          webformatURL,
-          largeImageURL,
+          if (page === 1) {
+            toast.success(`Hooray! We found ${data.totalHits} images.`);
+          }
+          setIsButtonShow(galleryPage < Math.ceil(data.totalHits / 12));
         })
-      );
-console.log(this.state.galleryPage)      
-      console.log(data.totalHits)
-        this.setState(prevState => ({
-          galleryItems: [...prevState.galleryItems, ...newData],
-          isButtonShow: this.state.galleryPage < Math.ceil(data.totalHits / 12),
-        }));
-      if (nextPage === 1) {
-        toast.success(`Hooray! We found ${apiService.hits} images.`);
-      }
-    });
+        .catch(error => {
+          toast.error(error.message);
+          setError(true);
+          setGalleryItems([]);
+          setGalleryPage(1);
+        })
+        .finally(() => setIsLoading(false));
+    };
+
+    fetchGalleryItems(searchQuery, galleryPage);
+  }, [searchQuery, galleryPage]);
+
+  const handleFormSubmit = searchQuery => {
+    setGalleryItems([]);
+    setGalleryPage(1);
+    setError(false);
+    setSearchQuery(searchQuery);
   };
 
-  handleFormSubmit = searchQuery => {
-    this.setState({ searchQuery, galleryPage: 1, galleryItems: [], isButtonShow: false });
+  const onLoadMore = () => {
+    setGalleryPage(prevGalleryPage => prevGalleryPage + 1);
   };
 
-  onLoadMore = () => {
-    this.setState(prevState => ({
-      galleryPage: prevState.galleryPage + 1,
-    }));
-  };
+  return (
+    <Container>
+      <Searchbar onSubmit={handleFormSubmit} />
 
-  render() {
-    const { galleryItems, isLoading: loading, isButtonShow, error } = this.state;
+      {error && <h2>Please, enter search word!</h2>}
+      {!error && <ImageGallery galleryItems={galleryItems} />}
+      {isLoading && <Loader />}
+      {isButtonShow && <Button onClick={onLoadMore} />}
 
-    return (
-      <Container>
-        <Searchbar onSubmit={this.handleFormSubmit} />
-
-        {error && <h2>Please, enter search word!</h2>}
-        {!error && <ImageGallery galleryItems={galleryItems} />}
-        {loading && <Loader />}
-        {isButtonShow && <Button onClick={this.onLoadMore} />}
-
-        {/* Add */}
-        <ToastContainer autoClose={2000} theme="dark" />
-      </Container>
-    );
-  }
-}
+      {/* Add */}
+      <ToastContainer autoClose={2000} theme="dark" />
+    </Container>
+  );
+};
